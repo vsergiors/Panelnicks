@@ -31,7 +31,7 @@
       document.getElementById(sectionId).classList.add('active');
   };
 
-  // REGISTER
+  // REGISTER: Primera cuenta OWNER
   window.register = async function(){
     const email = document.getElementById("emailInput").value.trim();
     const pass = document.getElementById("passInput").value.trim();
@@ -43,15 +43,21 @@
 
     try {
       const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+
+      // Comprobar si es la primera cuenta
+      const usersSnap = await getDocs(collection(db, "users"));
+      const rank = usersSnap.empty ? "OWNER" : "USER"; // primera cuenta OWNER
+
       await setDoc(doc(db, "users", userCred.user.uid), {
         username,
         displayName,
         email,
         showEmail,
-        rank: "USER",
+        rank,
         createdAt: Date.now()
       });
-      alert("Cuenta creada");
+
+      alert(`Cuenta creada con rango: ${rank}`);
       go('home');
     } catch(e) {
       alert("Error: " + e.message);
