@@ -2,262 +2,240 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>HySquare Panel</title>
+<title>vPanel</title>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+<script type="module">
+  // Firebase modular
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
-<style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #020617;
-    color: white;
-}
+  // Config Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyCEPH_Nt_NKQYY3Sb2VFGsbiWoB_Ms07XY",
+    authDomain: "cuentas-d95d4.firebaseapp.com",
+    projectId: "cuentas-d95d4",
+    storageBucket: "cuentas-d95d4.firebasestorage.app",
+    messagingSenderId: "192264269052",
+    appId: "1:192264269052:web:78f756a5a6dd9bf311bb79"
+  };
 
-/* NAV */
-.nav {
-    display: flex;
-    justify-content: space-between;
-    padding: 15px 25px;
-    background: rgba(255,255,255,0.05);
-}
+  // Inicializar
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-.nav button {
-    margin-left: 10px;
-}
+  // NAV + SECCIONES
+  window.go = function(sectionId){
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(sectionId).classList.add('active');
+  };
 
-/* SECCIONES */
-.section {
-    display: none;
-    padding: 20px;
-}
-
-.active {
-    display: block;
-}
-
-/* UI */
-.card {
-    background: rgba(255,255,255,0.05);
-    padding: 20px;
-    border-radius: 15px;
-    margin-top: 15px;
-}
-
-input, button, select {
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 10px;
-    border: none;
-}
-
-button {
-    background: purple;
-    color: white;
-    cursor: pointer;
-}
-</style>
-</head>
-
-<body>
-
-<div class="nav">
-    <div>
-        <button onclick="go('home')">Home</button>
-        <button onclick="go('search')">Buscar</button>
-        <button onclick="go('profile')">Perfil</button>
-        <button onclick="go('admin')" id="adminBtn" style="display:none;">Admin</button>
-    </div>
-
-    <div>
-        <button onclick="go('auth')" id="loginBtn">Login</button>
-        <button onclick="logout()" id="logoutBtn" style="display:none;">Logout</button>
-    </div>
-</div>
-
-<!-- SECCIONES -->
-
-<!-- HOME -->
-<div id="home" class="section active">
-    <h1>Anuncios</h1>
-    <div id="anuncios"></div>
-</div>
-
-<!-- AUTH -->
-<div id="auth" class="section">
-    <h2>Login / Register</h2>
-    <input id="emailInput" placeholder="Correo"><br>
-    <input id="passInput" type="password" placeholder="Contraseña"><br>
-    <input id="usernameInput" placeholder="Nick MC"><br>
-    <input id="displayNameInput" placeholder="Nombre visible"><br>
-    <label><input type="checkbox" id="showEmailCheck"> Mostrar email</label><br>
-    <button onclick="register()">Registrarse</button>
-    <button onclick="login()">Login</button>
-</div>
-
-<!-- SEARCH -->
-<div id="search" class="section">
-    <h2>Buscar usuarios</h2>
-    <input id="searchInput" placeholder="Nick o correo"><br>
-    <button onclick="buscar()">Buscar</button>
-    <div id="searchResults"></div>
-</div>
-
-<!-- PROFILE -->
-<div id="profile" class="section">
-    <h2>Mi Perfil</h2>
-    <input id="newDisplayName" placeholder="Nuevo nombre visible"><br>
-    <input id="newUsername" placeholder="Nuevo nick MC"><br>
-    <button onclick="updateProfile()">Guardar</button>
-</div>
-
-<!-- ADMIN -->
-<div id="admin" class="section">
-    <h2>Panel Admin</h2>
-    <h3>Cambiar rango de usuario</h3>
-    <input id="targetUid" placeholder="UID usuario"><br>
-    <select id="newRank">
-        <option>USER</option>
-        <option>OWNER</option>
-    </select>
-    <button onclick="setRank()">Cambiar rango</button>
-
-    <h3>Crear anuncio</h3>
-    <input id="adTitle" placeholder="Título anuncio"><br>
-    <input id="adContent" placeholder="Contenido anuncio"><br>
-    <button onclick="crearAnuncio()">Crear anuncio</button>
-</div>
-
-<script>
-/* FIREBASE CONFIG */
-const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "TU_PROJECT.firebaseapp.com",
-    projectId: "TU_PROJECT_ID"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-/* NAV + SECCIONES */
-function go(sectionId) {
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.getElementById(sectionId).classList.add('active');
-}
-
-/* AUTH FUNCTIONS */
-async function register() {
-    const email = emailInput.value.trim();
-    const pass = passInput.value.trim();
-    const username = usernameInput.value.trim();
-    const displayName = displayNameInput.value.trim();
-    const showEmail = showEmailCheck.checked;
+  // REGISTER
+  window.register = async function(){
+    const email = document.getElementById("emailInput").value.trim();
+    const pass = document.getElementById("passInput").value.trim();
+    const username = document.getElementById("usernameInput").value.trim();
+    const displayName = document.getElementById("displayNameInput").value.trim();
+    const showEmail = document.getElementById("showEmailCheck").checked;
 
     if(!email || !pass || !username) return alert("Completa todos los campos");
 
-    const userCred = await auth.createUserWithEmailAndPassword(email, pass);
-
-    await db.collection("users").doc(userCred.user.uid).set({
+    try {
+      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+      await setDoc(doc(db, "users", userCred.user.uid), {
         username,
         displayName,
         email,
         showEmail,
         rank: "USER",
         createdAt: Date.now()
-    });
-
-    alert("Cuenta creada");
-    go('home');
-}
-
-async function login() {
-    await auth.signInWithEmailAndPassword(emailInput.value, passInput.value);
-    go('home');
-}
-
-function logout() {
-    auth.signOut();
-    go('auth');
-}
-
-/* UI GLOBAL */
-auth.onAuthStateChanged(async user => {
-    if(!user) {
-        loginBtn.style.display = 'inline-block';
-        logoutBtn.style.display = 'none';
-        adminBtn.style.display = 'none';
-        return;
+      });
+      alert("Cuenta creada");
+      go('home');
+    } catch(e) {
+      alert("Error: " + e.message);
     }
+  };
+
+  // LOGIN
+  window.login = async function(){
+    const email = document.getElementById("emailInput").value.trim();
+    const pass = document.getElementById("passInput").value.trim();
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      go('home');
+    } catch(e) {
+      alert("Error login: " + e.message);
+    }
+  };
+
+  // LOGOUT
+  window.logout = async function(){
+    await signOut(auth);
+    go('auth');
+  };
+
+  // ESTADO DE AUTENTICACIÓN
+  onAuthStateChanged(auth, async user => {
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const adminBtn = document.getElementById("adminBtn");
+
+    if(!user){
+      loginBtn.style.display = 'inline-block';
+      logoutBtn.style.display = 'none';
+      adminBtn.style.display = 'none';
+      return;
+    }
+
     loginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
 
-    const doc = await db.collection("users").doc(user.uid).get();
-    window.currentUserData = doc.data();
-    if(doc.data().rank === "OWNER") adminBtn.style.display = 'inline-block';
+    const docSnap = await getDoc(doc(db, "users", user.uid));
+    window.currentUserData = docSnap.data();
+    if(docSnap.data().rank === "OWNER") adminBtn.style.display = 'inline-block';
 
     loadAnuncios();
-});
+  });
 
-/* CARGAR ANUNCIOS */
-async function loadAnuncios() {
-    const snap = await db.collection("anuncios").orderBy("createdAt","desc").get();
-    anuncios.innerHTML = "";
-    snap.forEach(doc => {
-        const a = doc.data();
-        anuncios.innerHTML += `<div class="card"><h3>${a.title}</h3><p>${a.content}</p></div>`;
+  // CARGAR ANUNCIOS
+  async function loadAnuncios(){
+    const anunciosDiv = document.getElementById("anuncios");
+    anunciosDiv.innerHTML = "";
+    const snap = await getDocs(query(collection(db, "anuncios"), orderBy("createdAt","desc")));
+    snap.forEach(docu=>{
+      const a = docu.data();
+      anunciosDiv.innerHTML += `<div class="card"><h3>${a.title}</h3><p>${a.content}</p></div>`;
     });
-}
+  }
+  window.loadAnuncios = loadAnuncios;
 
-/* BUSCAR USUARIOS */
-async function buscar() {
-    const q = searchInput.value.trim();
-    let snap;
-    if(q.includes("@")) {
-        snap = await db.collection("users").where("email","==",q).get();
-    } else {
-        snap = await db.collection("users").where("username","==",q).get();
-    }
+  // BUSCAR USUARIOS
+  window.buscar = async function(){
+    const q = document.getElementById("searchInput").value.trim();
+    const searchResults = document.getElementById("searchResults");
     searchResults.innerHTML = "";
-    snap.forEach(doc => {
-        const u = doc.data();
-        searchResults.innerHTML += `<div class="card">
-            <b>${u.displayName}</b> (${u.username})<br>
-            ${u.showEmail ? u.email : ""}
-        </div>`;
+    let snap;
+    if(q.includes("@")){
+      snap = await getDocs(query(collection(db, "users"), where("email","==",q)));
+    } else {
+      snap = await getDocs(query(collection(db, "users"), where("username","==",q)));
+    }
+    snap.forEach(docu=>{
+      const u = docu.data();
+      searchResults.innerHTML += `<div class="card">
+        <b>${u.displayName}</b> (${u.username})<br>
+        ${u.showEmail ? u.email : ""}
+      </div>`;
     });
-}
+  };
 
-/* PERFIL */
-async function updateProfile() {
+  // PERFIL
+  window.updateProfile = async function(){
     const user = auth.currentUser;
-    await db.collection("users").doc(user.uid).update({
-        displayName: newDisplayName.value,
-        username: newUsername.value
+    const newDisplayName = document.getElementById("newDisplayName").value.trim();
+    const newUsername = document.getElementById("newUsername").value.trim();
+    await setDoc(doc(db,"users",user.uid), {
+      ...window.currentUserData,
+      displayName: newDisplayName || window.currentUserData.displayName,
+      username: newUsername || window.currentUserData.username
     });
     alert("Perfil actualizado");
-}
+  };
 
-/* ADMIN */
-async function setRank() {
-    await db.collection("users").doc(targetUid.value).update({
-        rank: newRank.value
-    });
+  // ADMIN
+  window.setRank = async function(){
+    const targetUid = document.getElementById("targetUid").value.trim();
+    const newRank = document.getElementById("newRank").value;
+    await setDoc(doc(db,"users",targetUid), {rank: newRank}, {merge:true});
     alert("Rango actualizado");
-}
+  };
 
-async function crearAnuncio() {
-    await db.collection("anuncios").add({
-        title: adTitle.value,
-        content: adContent.value,
-        createdAt: Date.now()
-    });
+  window.crearAnuncio = async function(){
+    const title = document.getElementById("adTitle").value.trim();
+    const content = document.getElementById("adContent").value.trim();
+    if(!title || !content) return alert("Completa título y contenido");
+    await setDoc(doc(collection(db,"anuncios")), {title, content, createdAt: Date.now()});
     alert("Anuncio creado");
     loadAnuncios();
-}
+  };
+
 </script>
+
+<style>
+body {margin:0; font-family:Arial,sans-serif; background:#020617; color:white;}
+.nav {display:flex; justify-content:space-between; padding:15px 25px; background:rgba(255,255,255,0.05);}
+.nav button {margin-left:10px;}
+.section {display:none; padding:20px;}
+.active {display:block;}
+.card {background: rgba(255,255,255,0.05); padding:20px; border-radius:15px; margin-top:15px;}
+input, button, select {padding:10px; margin-top:10px; border-radius:10px; border:none;}
+button {background: purple; color:white; cursor:pointer;}
+</style>
+</head>
+
+<body>
+<div class="nav">
+  <div>
+    <button onclick="go('home')">Home</button>
+    <button onclick="go('search')">Buscar</button>
+    <button onclick="go('profile')">Perfil</button>
+    <button onclick="go('admin')" id="adminBtn" style="display:none;">Admin</button>
+  </div>
+  <div>
+    <button onclick="go('auth')" id="loginBtn">Login</button>
+    <button onclick="logout()" id="logoutBtn" style="display:none;">Logout</button>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="home" class="section active">
+  <h1>Anuncios</h1>
+  <div id="anuncios"></div>
+</div>
+
+<!-- AUTH -->
+<div id="auth" class="section">
+  <h2>Login / Register</h2>
+  <input id="emailInput" placeholder="Correo"><br>
+  <input id="passInput" type="password" placeholder="Contraseña"><br>
+  <input id="usernameInput" placeholder="Nick MC"><br>
+  <input id="displayNameInput" placeholder="Nombre visible"><br>
+  <label><input type="checkbox" id="showEmailCheck"> Mostrar email</label><br>
+  <button onclick="register()">Registrarse</button>
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- SEARCH -->
+<div id="search" class="section">
+  <h2>Buscar usuarios</h2>
+  <input id="searchInput" placeholder="Nick o correo"><br>
+  <button onclick="buscar()">Buscar</button>
+  <div id="searchResults"></div>
+</div>
+
+<!-- PROFILE -->
+<div id="profile" class="section">
+  <h2>Mi Perfil</h2>
+  <input id="newDisplayName" placeholder="Nuevo nombre visible"><br>
+  <input id="newUsername" placeholder="Nuevo nick MC"><br>
+  <button onclick="updateProfile()">Guardar</button>
+</div>
+
+<!-- ADMIN -->
+<div id="admin" class="section">
+  <h2>Panel Admin</h2>
+  <h3>Cambiar rango de usuario</h3>
+  <input id="targetUid" placeholder="UID usuario"><br>
+  <select id="newRank"><option>USER</option><option>OWNER</option></select>
+  <button onclick="setRank()">Cambiar rango</button>
+
+  <h3>Crear anuncio</h3>
+  <input id="adTitle" placeholder="Título anuncio"><br>
+  <input id="adContent" placeholder="Contenido anuncio"><br>
+  <button onclick="crearAnuncio()">Crear anuncio</button>
+</div>
 
 </body>
 </html>
